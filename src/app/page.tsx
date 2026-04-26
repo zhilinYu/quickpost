@@ -16,6 +16,9 @@ export default function Home() {
   const [contents, setContents] = useState<ContentBlock[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const [maxTrials] = useState(3);
+  const [exhausted, setExhausted] = useState(false);
 
   const generate = async () => {
     if (!topic.trim()) return;
@@ -36,6 +39,13 @@ export default function Home() {
       }
 
       const data = await res.json();
+
+      if (data.remaining !== undefined) {
+        setRemaining(data.remaining);
+        if (data.remaining <= 0) {
+          setExhausted(true);
+        }
+      }
 
       const blocks: ContentBlock[] = [
         {
@@ -116,7 +126,9 @@ export default function Home() {
           </div>
           <div className="text-right">
             <div className="text-xs text-gray-400">剩余次数</div>
-            <div className="text-lg font-semibold text-orange-500">∞</div>
+            <div className={`text-lg font-semibold ${remaining === null ? "text-gray-400" : remaining <= 0 ? "text-red-500" : "text-orange-500"}`}>
+              {remaining === null ? "3" : remaining}
+            </div>
           </div>
         </div>
       </header>
@@ -148,10 +160,12 @@ export default function Home() {
             />
             <button
               onClick={generate}
-              disabled={loading || !topic.trim()}
+              disabled={loading || !topic.trim() || exhausted}
               className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
             >
-              {loading ? (
+              {exhausted ? (
+                "试用已结束 🔒"
+              ) : loading ? (
                 <span className="flex items-center gap-2">
                   <svg
                     className="animate-spin h-4 w-4"

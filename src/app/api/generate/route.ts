@@ -75,6 +75,17 @@ function parseContent(raw: string): {
 
 export async function POST(req: NextRequest) {
   try {
+    // 试用次数限制：通过 cookie 检测
+    const maxTrials = 3;
+    const trialCount = parseInt(req.cookies.get("trial_count")?.value || "0", 10);
+
+    if (trialCount >= maxTrials) {
+      return NextResponse.json(
+        { error: "试用次数已用完，请联系作者获取完整版" },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
     const { topic } = body;
 
@@ -111,7 +122,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json(parsed);
+    const newCount = trialCount + 1;
+    const remaining = Math.max(0, maxTrials - newCount);
+
+    const response = NextResponse.json({
+      ...parsed,
+      remaining,
+      maxTrials,
+    });
+
+    // 设置 cookie，记录试用次数
+    response.cookies.set("trial_count", String(newCount), {
+      maxAge: 60 * 60 * 24 * 30, // 30 天
+      httpOnly: true,
+      sameSite: "lax",
+    });
+
+    return response;
   } catch (err: unknown) {
     console.error("Generate error:", err);
     const message = err instanceof Error ? err.message : "服务器内部错误";
